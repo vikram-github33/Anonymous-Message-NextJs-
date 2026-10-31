@@ -1,15 +1,15 @@
 import dbConnect from "@/app/lib/dbConnect";
 import UserModel, { Message } from "@/app/model/User";
-import { log } from "console";
+// import { log } from "console";
 
 export async function POST(request: Request) {
   dbConnect();
   const { username, content } = await request.json();
   try {
+    console.log("username ===",username)
     const users = await UserModel.find().exec();
-    console.log("username ===",users)
     const user = await UserModel.findOne({ username }).exec();
-
+    console.log("user=======",user)
     if (!user) {
       return Response.json(
         { message: "User Not Found", success: false },
@@ -20,14 +20,14 @@ export async function POST(request: Request) {
     }
     if (!user.isAcceptingMessage) {
       return Response.json(
-        { message: "User Not Found", success: false },
+        { message: "User Not Accepting Message", success: false },
         {
           status: 404,
         },
       );
     }
     const newMessage = {content , createdAt:new Date()};
-
+console.log("newMessage",newMessage)
     user.messages.push(newMessage as Message)
     await user.save()
      return Response.json(

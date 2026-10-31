@@ -1,61 +1,116 @@
 
-"use client"
+"use client";
+
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Box, Button, InputAdornment, TextField } from "@mui/material";
+import {
+  Box,
+  Button,
+  CircularProgress,
+  TextField,
+  Alert,
+} from "@mui/material";
 import axios from "axios";
-// import { useParams } from "next/navigation";
-// import React, { Suspense } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
+import { useState } from "react";
+
 const formValidation = z.object({
-  message: z.string(),
+  content: z
+    .string()
+    .trim()
+    .min(1, "Message is required")
+    .max(1000, "Message cannot exceed 1000 characters"),
 });
+
+type FormData = z.infer<typeof formValidation>;
+
 interface Props {
   username: string;
 }
-const SendMessageForm = ({username}:Props) => {
-  const {handleSubmit,control,formState:{errors},getValues} = useForm({
+
+const SendMessageForm = ({ username }: Props) => {
+  const [success, setSuccess] = useState("");
+  const [apiError, setApiError] = useState("");
+
+  const {
+    handleSubmit,
+    control,
+    reset,
+    formState: { isSubmitting },
+  } = useForm<FormData>({
     resolver: zodResolver(formValidation),
     defaultValues: {
-      message: "",
+      content: "",
     },
   });
-  // const {username} = await params;
-console.log(username)
-  const onSubmit = async(data:{message:string}) =>{
+
+  const onSubmit = async (data: FormData) => {
+    setSuccess("");
+    setApiError("");
+
     try {
-      const response = await axios.post('/api/send-messages',{
-        message: getValues('message'),
-        username
+      const response = await axios.post("/api/send-messages", {
+        content: data.content,
+        username,
       });
-      console.log(response)
+
+      console.log("Message sent:", response.data);
+
+      setSuccess("Message sent successfully!");
+
+      reset();
     } catch (error) {
-      
+      console.error("Failed to send message:", error);
+
+      if (axios.isAxiosError(error)) {
+        setApiError(
+          error.response?.data?.message ||
+            "Failed to send message. Please try again."
+        );
+      } else {
+        setApiError("Something went wrong. Please try again.");
+      }
     }
-  }
+  };
+
   return (
-    
     <Box
       component="form"
       onSubmit={handleSubmit(onSubmit)}
       display="flex"
       flexDirection="column"
       gap={2}
+      sx={{
+        width: "100%",
+        maxWidth: 500,
+        mx: "auto",
+        p: 3,
+        borderRadius: 2,
+        boxShadow: 2,
+      }}
     >
-     <Controller
-        name="message"
+      <TextField
+        label="Recipient"
+        value={username}
+        fullWidth
+        disabled
+      />
+
+      {success && <Alert severity="success">{success}</Alert>}
+
+      {apiError && <Alert severity="error">{apiError}</Alert>}
+
+      <Controller
+        name="content"
         control={control}
-        rules={{
-          required: "Message is required",
-          pattern: {
-            value: /^\S+@\S+\.\S+$/,
-            message: "Enter a valid Message",
-          },
-        }}
         render={({ field, fieldState }) => (
           <TextField
             {...field}
-            label="Message"
+            label="Your Message"
+            placeholder="Write your message here..."
+            multiline
+            minRows={4}
+            maxRows={8}
             fullWidth
             error={!!fieldState.error}
             helperText={fieldState.error?.message}
@@ -63,8 +118,20 @@ console.log(username)
         )}
       />
 
-      <Button type="submit" variant="contained">
-        Submit
+      <Button
+        type="submit"
+        variant="contained"
+        fullWidth
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? (
+          <>
+            <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
+            Sending...
+          </>
+        ) : (
+          "Send Message"
+        )}
       </Button>
     </Box>
   );
